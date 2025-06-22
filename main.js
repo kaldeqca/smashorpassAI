@@ -1,5 +1,7 @@
 // --- START OF FILE main.js ---
 
+// --- START OF FILE main.js ---
+
 // --- Import configuration ---
 import { systemPrompts } from './config.js';
 import { translations } from './translations.js';
@@ -184,6 +186,10 @@ apiKeyInput.addEventListener('input', updateAnalyzeButtonState);
 // 6. Handle "Analyze" button click
 analyzeButton.addEventListener('click', handleImageAnalysis);
 
+// 7. Handle paste events for images
+document.addEventListener('paste', handlePaste);
+
+
 // --- CORE LOGIC ---
 
 function imageToBase64(file) {
@@ -193,6 +199,37 @@ function imageToBase64(file) {
         reader.onerror = error => reject(error);
         reader.readAsDataURL(file);
     });
+}
+
+function handlePaste(event) {
+    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+    if (!items) return;
+
+    let imageFile = null;
+
+    // Iterate through clipboard items to find an image file
+    for (const item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+            imageFile = item.getAsFile();
+            break; // Stop after finding the first image
+        }
+    }
+
+    if (imageFile) {
+        event.preventDefault(); // Prevent default paste behavior
+
+        // Use the found file to update the UI
+        uploadedFile = imageFile;
+        displayImagePreview(uploadedFile);
+
+        // Sync the file input with the pasted file for consistency
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(imageFile);
+        fileInput.files = dataTransfer.files;
+
+        resultDisplayArea.innerHTML = '';
+        updateAnalyzeButtonState();
+    }
 }
 
 function handleFileSelection(event) {

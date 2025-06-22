@@ -7,7 +7,7 @@ An interactive web application that uses the Google Gemini API to provide a humo
 ## ✨ Features
 
 - **Model Selector**: Allows user to select specific Gemini model
-- **Dynamic Image Upload**: Click to select or drag-and-drop an image file.
+- **Dynamic Image Upload**: Click to select, drag-and-drop, or paste (Ctrl+V) an image file.
 - **Bilingual Support**: Supports both English and Chinese
 - **Multiple Analysis Styles**:
   - **Concise**: A brief, 1-2 sentence analysis.

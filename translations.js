@@ -115,7 +115,7 @@ export const translations = {
 
         // --- Rating Labels ---
         ratingLabels: {
-            '1-2': '纯属答辩',
+            '1-2': '纯屎',
             '3-4': '勉强能冲',
             '5-6': '有点意思',
             '7-8': '嗯了',
