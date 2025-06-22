@@ -1,8 +1,11 @@
-// --- Import configuration from config.js ---
-import { systemPrompts, getRatingLabel } from './config.js';
+// --- START OF FILE main.js ---
+
+// --- Import configuration ---
+import { systemPrompts } from './config.js';
+import { translations } from './translations.js';
 
 // --- API & MODEL CONFIGURATION ---
-const MODEL_NAME = "gemini-2.5-flash"; // Using a stable public model for reliability
+const MODEL_NAME = "gemini-2.5-flash";
 
 // --- DOM ELEMENT SELECTION ---
 const modeButtons = document.querySelectorAll('.mode-btn');
@@ -11,105 +14,159 @@ const uploadArea = document.getElementById('upload-area');
 const apiKeyInput = document.getElementById('api-key-input');
 const analyzeButton = document.getElementById('analyze-btn');
 const resultDisplayArea = document.getElementById('result-display-area');
+const languageButtons = document.querySelectorAll('.language-switcher button');
 
 // --- STATE MANAGEMENT ---
-let selectedMode = 'Concise'; // Default mode, matches the active button in HTML
-let isProcessing = false; // Prevent multiple simultaneous requests
-let uploadedFile = null; // Store the uploaded file object
+let selectedMode = 'Concise'; // Default mode
+let isProcessing = false;
+let uploadedFile = null;
+let currentLanguage = 'en'; // Default language
 
-// --- UI FUNCTIONS ---
+// --- TRANSLATION & UI FUNCTIONS ---
+
+// Gets the rating label from the translations object
+function getRatingLabel(rating) {
+    const labels = translations[currentLanguage].ratingLabels;
+    if (rating <= 2) return labels['1-2'];
+    if (rating <= 4) return labels['3-4'];
+    if (rating <= 6) return labels['5-6'];
+    if (rating <= 8) return labels['7-8'];
+    return labels['9-10'];
+}
+
+// Sets the language for the entire UI
+function setLanguage(lang) {
+    currentLanguage = lang;
+
+    // Update active button style
+    languageButtons.forEach(button => {
+        button.classList.toggle('active', button.dataset.lang === lang);
+    });
+
+    // Update all elements with a data-translate-key
+    document.querySelectorAll('[data-translate-key]').forEach(el => {
+        const key = el.dataset.translateKey;
+        if (translations[lang][key]) {
+            el.textContent = translations[lang][key];
+        }
+    });
+
+    // Handle special cases like placeholders and dynamic content
+    apiKeyInput.placeholder = translations[lang].apiKeyPlaceholder;
+
+    // Reset upload prompt to the correct language if no file is uploaded
+    if (!uploadedFile) {
+        resetUploadPrompt();
+    }
+
+    // If there is a result, re-render it in the new language
+    if (resultDisplayArea.innerHTML.trim() !== '' && !isProcessing) {
+        const verdictEl = resultDisplayArea.querySelector('.result-value[class*="verdict-"]');
+        if (verdictEl) {
+            const result = {
+                verdict: verdictEl.textContent,
+                rating: parseInt(resultDisplayArea.querySelector('.result-item:nth-child(2) .result-value').textContent),
+                explanation: resultDisplayArea.querySelector('.explanation-text').textContent
+            };
+            displayResult(result);
+        }
+    }
+}
 
 // Resets the initial upload prompt
 function resetUploadPrompt() {
+    const trans = translations[currentLanguage];
     uploadArea.innerHTML = `
         <div class="upload-area-content">
             <div class="upload-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
             </div>
-            <p>Drag & drop an image or <span class="upload-link">click to upload</span></p>
+            <p>${trans.uploadPrompt}<span class="upload-link">${trans.uploadLink}</span></p>
         </div>`;
-    uploadArea.style.padding = '40px 20px'; // Restore padding
-    uploadArea.style.borderStyle = 'dashed'; // Restore border style
+    uploadArea.style.padding = '40px 20px';
+    uploadArea.style.borderStyle = 'dashed';
 }
 
-// Displays a preview of the selected image
 function displayImagePreview(file) {
     const reader = new FileReader();
     reader.onload = (event) => {
         uploadArea.innerHTML = `<img src="${event.target.result}" alt="Image preview">`;
-        uploadArea.style.padding = '0'; // Remove padding to fit the image
-        uploadArea.style.borderStyle = 'solid'; // Change border to solid
+        uploadArea.style.padding = '0';
+        uploadArea.style.borderStyle = 'solid';
     };
     reader.readAsDataURL(file);
 }
 
 function displayLoading() {
-    resultDisplayArea.innerHTML = `<p class="loading-text">Analyzing... This may take a moment.</p>`;
+    resultDisplayArea.innerHTML = `<p class="loading-text">${translations[currentLanguage].loadingText}</p>`;
 }
 
 function displayError(errorMessage) {
-    resultDisplayArea.innerHTML = `<p class="error-text"><strong>Analysis Failed:</strong><br>${errorMessage}</p>`;
+    resultDisplayArea.innerHTML = `<p class="error-text"><strong>${translations[currentLanguage].errorPrefix}</strong><br>${errorMessage}</p>`;
 }
 
 function displayResult(result) {
     const { verdict, rating, explanation } = result;
     const ratingLabel = getRatingLabel(rating);
     const verdictClass = `verdict-${verdict.toLowerCase()}`;
+    const trans = translations[currentLanguage];
 
     resultDisplayArea.innerHTML = `
         <div class="result-container">
             <div class="result-item">
-                <span class="result-label">Verdict:</span>
+                <span class="result-label">${trans.verdictLabel}</span>
                 <span class="result-value ${verdictClass}">${verdict}</span>
             </div>
             <div class="result-item">
-                <span class="result-label">Score:</span>
+                <span class="result-label">${trans.scoreLabel}</span>
                 <span class="result-value">${rating}/10 (${ratingLabel})</span>
             </div>
             <div class="result-item explanation">
-                <span class="result-label">Explanation:</span>
+                <span class="result-label">${trans.explanationLabel}</span>
                 <p class="explanation-text">${explanation}</p>
             </div>
         </div>`;
 }
 
-// Checks conditions and enables/disables the analyze button
 function updateAnalyzeButtonState() {
     const apiKeyPresent = apiKeyInput.value.trim() !== '';
-    if (uploadedFile && apiKeyPresent) {
-        analyzeButton.disabled = false;
-    } else {
-        analyzeButton.disabled = true;
-    }
+    analyzeButton.disabled = !(uploadedFile && apiKeyPresent);
 }
 
 // --- EVENT LISTENERS ---
-// 1. Set initial UI state
-document.addEventListener('DOMContentLoaded', resetUploadPrompt);
+// 1. Set initial UI state on load
+document.addEventListener('DOMContentLoaded', () => {
+    setLanguage(currentLanguage); // Set default language
+});
 
-// 2. Handle analysis mode selection
+// 2. Handle language selection
+languageButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        setLanguage(button.dataset.lang);
+    });
+});
+
+// 3. Handle analysis mode selection
 modeButtons.forEach(button => {
     button.addEventListener('click', () => {
-        if (isProcessing) return; // Don't change mode while processing
+        if (isProcessing) return;
         modeButtons.forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
         selectedMode = button.querySelector('.mode-title').textContent.trim();
     });
 });
 
-// 3. Handle file selection
+// 4. Handle file selection
 fileInput.addEventListener('change', handleFileSelection);
 
-// 4. Listen for API key input to update button state
+// 5. Listen for API key input to update button state
 apiKeyInput.addEventListener('input', updateAnalyzeButtonState);
 
-// 5. Handle "Analyze" button click
+// 6. Handle "Analyze" button click
 analyzeButton.addEventListener('click', handleImageAnalysis);
-
 
 // --- CORE LOGIC ---
 
-// Converts an image file to a Base64 string for the API
 function imageToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -119,7 +176,6 @@ function imageToBase64(file) {
     });
 }
 
-// Called when a user selects a file
 function handleFileSelection(event) {
     const file = event.target.files[0];
     if (!file) {
@@ -129,34 +185,38 @@ function handleFileSelection(event) {
         uploadedFile = file;
         displayImagePreview(uploadedFile);
     }
-    // Clear previous results when a new image is selected
     resultDisplayArea.innerHTML = '';
     updateAnalyzeButtonState();
 }
 
-// Main function to process the image and call the API, triggered by button click
 async function handleImageAnalysis() {
     const API_KEY = apiKeyInput.value.trim();
+    const trans = translations[currentLanguage];
 
-    if (!uploadedFile || isProcessing || !API_KEY) {
-        if (!API_KEY) {
-            displayError("Please provide your API key.");
-        }
+    if (!API_KEY) {
+        displayError(trans.apiKeyMissingError);
         return;
     }
+    if (!uploadedFile || isProcessing) return;
 
     isProcessing = true;
     analyzeButton.disabled = true;
-    analyzeButton.textContent = 'Analyzing...';
+    analyzeButton.textContent = trans.analyzingButton;
     displayLoading();
 
     try {
         const base64Image = await imageToBase64(uploadedFile);
-        const selectedModeKey = selectedMode.toLowerCase();
-        const systemInstruction = systemPrompts[selectedModeKey];
+
+        const selectedModeTitleEl = document.querySelector('.mode-btn.active .mode-title');
+        const modeKey = selectedModeTitleEl.dataset.translateKey.replace('Title', '').toLowerCase();
+
+        // --- THIS IS THE ONLY LINE THAT CHANGES ---
+        // It now uses the currentLanguage to pick the correct prompt set (en or zh)
+        const systemInstruction = systemPrompts[currentLanguage][modeKey];
+        // --- END OF CHANGE ---
 
         if (!systemInstruction) {
-            throw new Error(`System prompt for mode "${selectedMode}" not found.`);
+            throw new Error(trans.promptError(selectedMode));
         }
 
         const requestBody = {
@@ -174,6 +234,7 @@ async function handleImageAnalysis() {
             }
         };
 
+        // ... (The rest of the function continues as before)
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -183,7 +244,7 @@ async function handleImageAnalysis() {
         if (!response.ok) {
             const errorData = await response.json();
             if (response.status === 400 && errorData.error.message.includes('API key not valid')) {
-                throw new Error("The provided API key is not valid. Please check your key and try again.");
+                throw new Error(trans.apiKeyInvalidError);
             }
             throw new Error(errorData.error.message || `API request failed with status ${response.status}`);
         }
@@ -191,7 +252,7 @@ async function handleImageAnalysis() {
         const data = await response.json();
 
         if (!data.candidates || data.candidates.length === 0) {
-            throw new Error("The model did not return a response. This may be due to a safety policy violation or an unknown API error.");
+            throw new Error(trans.modelError);
         }
 
         const resultJson = JSON.parse(data.candidates[0].content.parts[0].text);
@@ -202,8 +263,7 @@ async function handleImageAnalysis() {
         displayError(error.message);
     } finally {
         isProcessing = false;
-        analyzeButton.textContent = 'Analyze';
-        // Re-enable the button if conditions are still met
+        analyzeButton.textContent = trans.analyzeButton;
         updateAnalyzeButtonState();
     }
 }
@@ -214,38 +274,26 @@ uploadArea.addEventListener('dragover', (event) => {
     uploadArea.classList.add('dragging-over');
 });
 
-// 2. Handle the user dragging a file away from the drop area
 uploadArea.addEventListener('dragleave', () => {
-    uploadArea.classList.remove('dragging-over'); // Remove visual feedback
+    uploadArea.classList.remove('dragging-over');
 });
 
-// 3. Handle the actual file drop
 uploadArea.addEventListener('drop', (event) => {
-    event.preventDefault(); // Prevent the browser from opening the file
+    event.preventDefault();
     uploadArea.classList.remove('dragging-over');
 
     const files = event.dataTransfer.files;
 
     if (files.length > 0) {
-        // Use the first file that was dropped
         const file = files[0];
-
-        // Check if the dropped file is an image
         if (file && file.type.startsWith('image/')) {
-            uploadedFile = file; // Update the global state
-            displayImagePreview(uploadedFile); // Show the preview
-
-            // Also update the hidden file input's files list. 
-            // This isn't strictly necessary for your app to work but is good practice.
+            uploadedFile = file;
+            displayImagePreview(uploadedFile);
             fileInput.files = files;
-
         } else {
-            // Optional: Alert the user if they drop a non-image file
             alert('Please drop an image file (e.g., JPEG, PNG, GIF).');
             return;
         }
-
-        // Clear previous results and update the button state, just like in your click handler
         resultDisplayArea.innerHTML = '';
         updateAnalyzeButtonState();
     }
