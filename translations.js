@@ -6,9 +6,23 @@ export const translations = {
         title: "Smash or Pass AI",
         subtitle: "Upload an image to get an AI-powered analysis.",
         subtitleWarning: "(Please do not upload your own personal images)",
+        modelSelectorLabel: "Select Model:",
         apiKeyLabel: "API Key:",
         apiKeyPlaceholder: "Please provide your own API key from Gemini",
         analysisStyleTitle: "Select Analysis Style",
+
+        // --- Model Selector Options ---
+        models: [
+            { value: 'gemini-2.0-flash', text: 'Gemini 2.0 Flash (Default – fast and tolerant)' },
+            { value: 'gemini-2.5-flash', text: 'Gemini 2.5 Flash (Improved speed and accuracy)' },
+            { value: 'gemini-1.5-flash', text: 'Gemini 1.5 Flash (Lightweight and responsive, older version)' },
+            { value: 'gemini-2.0-flash-lite', text: 'Gemini 2.0 Flash-Lite (Blazing fast, for quick results)' },
+            { value: 'gemini-2.5-flash-lite-preview-06-17', text: 'Gemini 2.5 Flash-Lite Preview (Very fast preview, reduced detail)' },
+            { value: 'gemini-1.5-pro', text: 'Gemini 1.5 Pro (Stable and tolerant, legacy model - NOT FREE)' },
+            { value: 'gemini-2.5-pro', text: 'Gemini 2.5 Pro (Most powerful – NOT FREE)' }
+
+
+        ],
 
         // --- Mode Buttons ---
         conciseTitle: "Concise",
@@ -53,9 +67,22 @@ export const translations = {
         title: "上不上AI评分系统",
         subtitle: "上传图片，让AI来评判它的可操性。",
         subtitleWarning: "（请不要上传您自己的个人图片）",
+        modelSelectorLabel: "选择模型:",
         apiKeyLabel: "API密钥:",
         apiKeyPlaceholder: "请输入自己的Gemini API密钥",
         analysisStyleTitle: "选择分析风格",
+
+        // --- Model Selector Options ---
+        models: [
+            { value: 'gemini-2.0-flash', text: 'Gemini 2.0 Flash（默认版本 – 快速且宽容）' },
+            { value: 'gemini-2.5-flash', text: 'Gemini 2.5 Flash（速度与准确性提升）' },
+            { value: 'gemini-1.5-flash', text: 'Gemini 1.5 Flash（轻量且响应迅速，较旧版本）' },
+            { value: 'gemini-2.0-flash-lite', text: 'Gemini 2.0 Flash-Lite (速度飞快, 适合快速测试)' },
+            { value: 'gemini-2.5-flash-lite-preview-06-17', text: 'Gemini 2.5 Flash-Lite Preview (极速预览版, 细节有所减少)' },
+            { value: 'gemini-1.5-pro', text: 'Gemini 1.5 Pro（稳定且宽容的经典型号 - 需付费）' },
+            { value: 'gemini-2.5-pro', text: 'Gemini 2.5 Pro（最强大 – 需付费）' }
+
+        ],
 
         // --- Mode Buttons ---
         conciseTitle: "简洁",
