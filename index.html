@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Image Analyzer</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Smash or Pass AI</h1>
+      <p class="subtitle">
+        Upload an image to get an AI-powered analysis.
+        <br />
+        (Please do not upload your own personal images)
+      </p>
+
+      <!-- API Key Input Section -->
+      <div class="section api-key-section">
+        <label for="api-key-input" class="api-key-label">API Key:</label>
+        <input
+          type="password"
+          id="api-key-input"
+          class="api-key-input"
+          placeholder="Please provide your own API key from Gemini"
+        />
+      </div>
+
+      <div class="section">
+        <h2>Select Analysis Style</h2>
+        <div class="mode-selector">
+          <button class="mode-btn active">
+            <span class="mode-title">Concise</span>
+            <span class="mode-desc">A brief, 1-2 sentence analysis.</span>
+          </button>
+          <button class="mode-btn">
+            <span class="mode-title">Detailed</span>
+            <span class="mode-desc">A multi-sentence, in-depth look.</span>
+          </button>
+          <button class="mode-btn">
+            <span class="mode-title">Comprehensive</span>
+            <span class="mode-desc"
+              >An extensive, multi-paragraph-long evaluation.</span
+            >
+          </button>
+        </div>
+      </div>
+
+      <div class="section">
+        <input type="file" id="file-upload" accept="image/*" hidden />
+        <label for="file-upload" class="upload-area" id="upload-area"> </label>
+      </div>
+
+      <button id="analyze-btn" class="analyze-btn" disabled>Analyze</button>
+
+      <div id="result-display-area" class="result-display-area"></div>
+    </main>
+
+    <script src="main.js" type="module"></script>
+  </body>
+</html>
