@@ -204,16 +204,19 @@ async function handleImageAnalysis() {
     analyzeButton.textContent = trans.analyzingButton;
     displayLoading();
 
+    // --- Variables to store data for logging in case of error ---
+    let requestBodyToLog = null;
+    let rawResponseTextToLog = null;
+    let parsedResponseJsonToLog = null;
+    // --- End logging variables ---
+
     try {
         const base64Image = await imageToBase64(uploadedFile);
 
         const selectedModeTitleEl = document.querySelector('.mode-btn.active .mode-title');
         const modeKey = selectedModeTitleEl.dataset.translateKey.replace('Title', '').toLowerCase();
 
-        // --- THIS IS THE ONLY LINE THAT CHANGES ---
-        // It now uses the currentLanguage to pick the correct prompt set (en or zh)
         const systemInstruction = systemPrompts[currentLanguage][modeKey];
-        // --- END OF CHANGE ---
 
         if (!systemInstruction) {
             throw new Error(trans.promptError(selectedMode));
@@ -233,33 +236,62 @@ async function handleImageAnalysis() {
                 "response_mime_type": "application/json",
             }
         };
+        requestBodyToLog = requestBody; // Store request body for logging
 
-        // ... (The rest of the function continues as before)
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody),
         });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            if (response.status === 400 && errorData.error.message.includes('API key not valid')) {
-                throw new Error(trans.apiKeyInvalidError);
-            }
-            throw new Error(errorData.error.message || `API request failed with status ${response.status}`);
+        // Get raw response text for logging before attempting to parse as JSON
+        rawResponseTextToLog = await response.text();
+
+        // Attempt to parse the response text as JSON
+        try {
+            parsedResponseJsonToLog = JSON.parse(rawResponseTextToLog);
+        } catch (jsonParseError) {
+            console.warn("API response was not valid JSON. Raw response text is available in logs.", jsonParseError);
+            // parsedResponseJsonToLog remains null, rawResponseTextToLog will be logged
         }
 
-        const data = await response.json();
+        if (!response.ok) {
+            // Prefer the parsed JSON for error message if available, otherwise use raw text or status
+            const errorData = parsedResponseJsonToLog && parsedResponseJsonToLog.error ? parsedResponseJsonToLog.error : {};
+            const errorMessageFromResponse = errorData.message || rawResponseTextToLog || `API request failed with status ${response.status}`;
 
-        if (!data.candidates || data.candidates.length === 0) {
+            if (response.status === 400 && errorMessageFromResponse.includes('API key not valid')) {
+                throw new Error(trans.apiKeyInvalidError);
+            }
+            throw new Error(errorMessageFromResponse);
+        }
+
+        // If response.ok, and parsedResponseJsonToLog is available, use it as 'data'
+        const data = parsedResponseJsonToLog;
+
+        if (!data || !data.candidates || data.candidates.length === 0) {
             throw new Error(trans.modelError);
         }
 
-        const resultJson = JSON.parse(data.candidates[0].content.parts[0].text);
+        // The model's response is expected to be JSON string within a 'text' part
+        const modelOutputText = data.candidates[0].content.parts[0].text;
+        const resultJson = JSON.parse(modelOutputText); // Parse the model's actual output
+
         displayResult(resultJson);
 
     } catch (error) {
         console.error("Error during analysis:", error);
+        console.groupCollapsed("Model Communication Details (for debugging)"); // Group for clarity
+        if (requestBodyToLog) {
+            console.log("Request sent to model:", JSON.stringify(requestBodyToLog, null, 2));
+        }
+        if (rawResponseTextToLog) {
+            console.log("Raw Response Text from model:", rawResponseTextToLog);
+        }
+        if (parsedResponseJsonToLog) {
+            console.log("Parsed Response JSON from model:", JSON.stringify(parsedResponseJsonToLog, null, 2));
+        }
+        console.groupEnd(); // End the group
         displayError(error.message);
     } finally {
         isProcessing = false;
