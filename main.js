@@ -4,10 +4,8 @@
 import { systemPrompts } from './config.js';
 import { translations } from './translations.js';
 
-// --- API & MODEL CONFIGURATION ---
-const MODEL_NAME = "gemini-2.5-flash";
-
 // --- DOM ELEMENT SELECTION ---
+const modelSelector = document.getElementById('model-selector-input');
 const modeButtons = document.querySelectorAll('.mode-btn');
 const fileInput = document.getElementById('file-upload');
 const uploadArea = document.getElementById('upload-area');
@@ -23,6 +21,24 @@ let uploadedFile = null;
 let currentLanguage = 'en'; // Default language
 
 // --- TRANSLATION & UI FUNCTIONS ---
+
+// Populates the model selector dropdown with translated options
+function populateModelSelector() {
+    const selectedValue = modelSelector.value; // Save current selection
+    const models = translations[currentLanguage].models;
+
+    modelSelector.innerHTML = ''; // Clear existing options
+
+    models.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.value;
+        option.textContent = model.text;
+        modelSelector.appendChild(option);
+    });
+
+    // Restore previous selection if it still exists
+    modelSelector.value = selectedValue || models[0].value;
+}
 
 // Gets the rating label from the translations object
 function getRatingLabel(rating) {
@@ -42,6 +58,9 @@ function setLanguage(lang) {
     languageButtons.forEach(button => {
         button.classList.toggle('active', button.dataset.lang === lang);
     });
+
+    // Populate the model selector with the correct language
+    populateModelSelector();
 
     // Update all elements with a data-translate-key
     document.querySelectorAll('[data-translate-key]').forEach(el => {
@@ -136,7 +155,7 @@ function updateAnalyzeButtonState() {
 // --- EVENT LISTENERS ---
 // 1. Set initial UI state on load
 document.addEventListener('DOMContentLoaded', () => {
-    setLanguage(currentLanguage); // Set default language
+    setLanguage(currentLanguage); // Set default language and populate model selector
 });
 
 // 2. Handle language selection
@@ -191,6 +210,7 @@ function handleFileSelection(event) {
 
 async function handleImageAnalysis() {
     const API_KEY = apiKeyInput.value.trim();
+    const selectedModel = modelSelector.value;
     const trans = translations[currentLanguage];
 
     if (!API_KEY) {
@@ -238,7 +258,7 @@ async function handleImageAnalysis() {
         };
         requestBodyToLog = requestBody; // Store request body for logging
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody),
@@ -273,7 +293,7 @@ async function handleImageAnalysis() {
             throw new Error(trans.modelError);
         }
 
-        // The model's response is expected to be JSON string within a 'text' part
+        // The model's response is expected to be a JSON string within a 'text' part
         const modelOutputText = data.candidates[0].content.parts[0].text;
         const resultJson = JSON.parse(modelOutputText); // Parse the model's actual output
 
@@ -281,17 +301,19 @@ async function handleImageAnalysis() {
 
     } catch (error) {
         console.error("Error during analysis:", error);
-        console.groupCollapsed("Model Communication Details (for debugging)"); // Group for clarity
+        // --- START OF ERROR DUMP ---
+        console.groupCollapsed("Gemini API Communication Details (for debugging)");
         if (requestBodyToLog) {
-            console.log("Request sent to model:", JSON.stringify(requestBodyToLog, null, 2));
+            console.log("Request Sent:", requestBodyToLog);
         }
         if (rawResponseTextToLog) {
-            console.log("Raw Response Text from model:", rawResponseTextToLog);
+            console.log("Raw Response Received:", rawResponseTextToLog);
         }
         if (parsedResponseJsonToLog) {
-            console.log("Parsed Response JSON from model:", JSON.stringify(parsedResponseJsonToLog, null, 2));
+            console.log("Parsed Response JSON:", parsedResponseJsonToLog);
         }
-        console.groupEnd(); // End the group
+        console.groupEnd();
+        // --- END OF ERROR DUMP ---
         displayError(error.message);
     } finally {
         isProcessing = false;
@@ -321,7 +343,7 @@ uploadArea.addEventListener('drop', (event) => {
         if (file && file.type.startsWith('image/')) {
             uploadedFile = file;
             displayImagePreview(uploadedFile);
-            fileInput.files = files;
+            fileInput.files = files; // Sync the file input with the dropped file
         } else {
             alert('Please drop an image file (e.g., JPEG, PNG, GIF).');
             return;
